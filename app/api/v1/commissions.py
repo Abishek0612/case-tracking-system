@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
-
 from app.schemas.commission import CommissionsListResponse, CommissionResponse
 from app.services.jagriti_service import JagritiService
 

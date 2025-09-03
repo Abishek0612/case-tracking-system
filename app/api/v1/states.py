@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
-
 from app.schemas.state import StatesListResponse, StateResponse
 from app.services.jagriti_service import JagritiService
 
