@@ -1,20 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path
 from app.schemas.commission import CommissionsListResponse, CommissionResponse
 from app.services.jagriti_service import JagritiService
 
 router = APIRouter()
 
 
-def get_jagriti_service() -> JagritiService:
-    return JagritiService()
-
-
 @router.get("/commissions/{state_id}", response_model=CommissionsListResponse)
-async def get_commissions(
-    state_id: str = Path(..., description="State ID"),
-    service: JagritiService = Depends(get_jagriti_service)
-):
+async def get_commissions(state_id: str = Path(..., description="State ID")):
     try:
+        service = JagritiService()
         await service.initialize()
         commissions_data = await service.get_commissions(state_id)
         

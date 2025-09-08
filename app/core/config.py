@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -8,17 +8,18 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     JAGRITI_BASE_URL: str = "https://e-jagriti.gov.in"
-    JAGRITI_TIMEOUT: int = 30
+    JAGRITI_TIMEOUT: int = 60
     JAGRITI_MAX_RETRIES: int = 3
+    REQUEST_DELAY: float = 2.0
     
-    REQUEST_DELAY: float = 0.5
+    JAGRITI_USERNAME: Optional[str] = None
+    JAGRITI_PASSWORD: Optional[str] = None
+    JAGRITI_MOBILE: Optional[str] = None
     
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "http://localhost:8080",
-        "*"
-    ]
+    USE_HEADLESS_BROWSER: bool = True
+    BROWSER_TIMEOUT: int = 30000
+    
+    ALLOWED_ORIGINS: List[str] = ["*"]
     
     LOG_LEVEL: str = "INFO"
     LOG_ROTATION: str = "1 day"
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()

@@ -1,17 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from app.schemas.state import StatesListResponse, StateResponse
 from app.services.jagriti_service import JagritiService
 
 router = APIRouter()
 
 
-def get_jagriti_service() -> JagritiService:
-    return JagritiService()
-
-
 @router.get("/states", response_model=StatesListResponse)
-async def get_states(service: JagritiService = Depends(get_jagriti_service)):
+async def get_states():
     try:
+        service = JagritiService()
         await service.initialize()
         states_data = await service.get_states()
         

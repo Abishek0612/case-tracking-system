@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Optional
-from app.core.exceptions import StateNotFoundException, CommissionNotFoundException, JagritiServiceException
+from app.core.exceptions import StateNotFoundException, CommissionNotFoundException
 from app.schemas.case import CaseResponse, SearchType
 from app.utils.api_client import JagritiAPIClient
 
@@ -21,14 +21,13 @@ class JagritiService:
             if states:
                 self.states_cache = {state['id']: state for state in states}
                 self._initialized = True
-                logging.info(f"Successfully initialized with {len(states)} states")
+                logging.info(f"Initialized with {len(states)} states")
             else:
-                raise JagritiServiceException("No states received from API")
+                raise Exception("No states received")
                 
         except Exception as e:
             logging.error(f"Initialization failed: {e}")
-            # Still mark as initialized to use fallback data
-            self._initialized = True
+            raise
     
     async def get_states(self) -> List[Dict]:
         if not self._initialized:
@@ -48,7 +47,6 @@ class JagritiService:
         return self.commissions_cache[cache_key]
     
     def find_state_by_name(self, state_name: str) -> Optional[Dict]:
-        """Find state by name (case-insensitive)"""
         state_name_clean = state_name.upper().strip()
         
         for state in self.states_cache.values():
@@ -60,7 +58,6 @@ class JagritiService:
         return None
     
     def find_commission_by_name(self, state_id: str, commission_name: str) -> Optional[Dict]:
-        """Find commission by name (case-insensitive, partial match)"""
         cache_key = f"commissions_{state_id}"
         if cache_key not in self.commissions_cache:
             return None
@@ -83,32 +80,24 @@ class JagritiService:
         search_type: SearchType, 
         state: str, 
         commission: str, 
-        search_value: str,
-        **kwargs
+        search_value: str
     ) -> List[CaseResponse]:
         
         if not self._initialized:
             await self.initialize()
         
-        # Find state
         state_info = self.find_state_by_name(state)
         if not state_info:
-            available_states = [s['display_name'] for s in await self.get_states()]
-            raise StateNotFoundException(
-                f"State '{state}' not found. Available states: {', '.join(available_states[:10])}"
-            )
+            available = [s['display_name'] for s in await self.get_states()]
+            raise StateNotFoundException(f"State '{state}' not found. Available: {available[:5]}")
         
-        # Get and find commission
         commissions = await self.get_commissions(state_info['id'])
         commission_info = self.find_commission_by_name(state_info['id'], commission)
         
         if not commission_info:
-            available_commissions = [c['display_name'] for c in commissions]
-            raise CommissionNotFoundException(
-                f"Commission '{commission}' not found for state '{state}'. Available commissions: {', '.join(available_commissions[:5])}"
-            )
+            available = [c['display_name'] for c in commissions]
+            raise CommissionNotFoundException(f"Commission '{commission}' not found. Available: {available[:3]}")
         
-        # Build search parameters
         search_params = {
             "search_type": search_type.value,
             "state": state_info['display_name'],
@@ -119,10 +108,8 @@ class JagritiService:
         }
         
         try:
-            # Perform search
             raw_cases = await self.api_client.search_cases(search_params)
             
-            # Convert to response format
             cases = []
             for case_data in raw_cases:
                 case = CaseResponse(
@@ -142,29 +129,4 @@ class JagritiService:
             
         except Exception as e:
             logging.error(f"Case search failed: {e}")
-            # Return empty list instead of raising exception for better UX
             return []
-    
-    async def advanced_search_cases(self, request) -> Dict:
-        """Advanced search with pagination support"""
-        cases = await self.search_cases(
-            SearchType.COMPLAINANT,  # Default search type
-            request.state,
-            request.commission, 
-            request.search_value
-        )
-        
-        return {
-            "cases": cases,
-            "total_found": len(cases),
-            "page": 1,
-            "limit": len(cases),
-            "total_pages": 1,
-            "has_next": False,
-            "has_previous": False,
-            "search_params": {
-                "state": request.state,
-                "commission": request.commission,
-                "search_value": request.search_value
-            }
-        }
